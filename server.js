@@ -64,25 +64,21 @@ io.on("connection", (socket) => {
       id: id,
     };
     client.set(id, socket);
-    console.log(socket);
   });
   socket.on("message", async (message) => {
     let receiverUserId = message.receiverUserId;
-    console.log("message", message);
-    console.log("message", receiverUserId);
-    console.log(client[receiverUserId]);
     const receiverSocket = client.get(receiverUserId);
     var returnData = await ChatController.createMessage(message);
     const sender = await UserModel.findById(message.senderUserId);
+    const receiver = await UserModel.findById(message.receiverUserId);
     console.log("user sender : ", sender);
     if (receiverSocket) {
-      console.log(returnData);
       await receiverSocket.emit("message", returnData);
     } else {
       PushNotification.SendNotificationInternal({
         messageData: message.message,
         title: sender.name,
-        deviceNotificationId: sender.deviceNotificationId,
+        deviceNotificationId: [receiver.deviceNotificationId],
         small_icon: sender.profileImage.url,
         large_icon: sender.profileImage.url,
       });
@@ -91,7 +87,9 @@ io.on("connection", (socket) => {
   });
   socket.on("disconnect", () => {
     console.log("user disconnected");
-    client.delete(socket.user.id);
+    if (socket.user.id) {
+      client.delete(socket.user.id);
+    }
   });
 });
 

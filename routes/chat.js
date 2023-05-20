@@ -23,7 +23,12 @@ chatRouter.get(
   ChatController.getAllUser
 );
 chatRouter.get(
-  "/deleteChat/:senderReceiverId/:chatId",
+  "/setIsSent/:senderUserId/:chatId",
+  checkUserAuth,
+  ChatController.setIsSent
+);
+chatRouter.post(
+  "/deleteChat/:senderReceiverId",
   checkUserAuth,
   ChatController.deleteChat
 );

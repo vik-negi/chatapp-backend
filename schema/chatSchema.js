@@ -22,6 +22,9 @@ const ChatSchema = new Mongoose.Schema(
       required: true,
       default: false,
     },
+    lastRead: {
+      type: Mongoose.Schema.Types.ObjectId,
+    },
     chat: [
       {
         isSent: {

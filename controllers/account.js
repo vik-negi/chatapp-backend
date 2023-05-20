@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken");
 
 class AccountController {
   static signup = async (req, res) => {
-    // print("signup");
     const { username, password, name, mobile, email, deviceNotificationId } =
       req.body;
     var emailOrMobile = null;
@@ -16,7 +15,6 @@ class AccountController {
       req.body["deviceNotificationId"] &&
       (req.body["email"] || req.body["mobile"])
     ) {
-      console.log("req.body", req.body);
       if (req.body["email"]) {
         emailOrMobile = req.body["email"].toLowerCase();
         const emailExists = await UserModel.findOne({ email: emailOrMobile });
@@ -39,7 +37,6 @@ class AccountController {
       }
       try {
         const user = await UserModel.findOne({ username: username });
-        console.log("user", user);
         if (user) {
           return res.status(400).json({ message: "Username already exists" });
         }
@@ -53,7 +50,6 @@ class AccountController {
             message: "Id already exists Internal backend error",
           });
         }
-        console.log("id", id);
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -65,10 +61,8 @@ class AccountController {
         });
         if (email) {
           newUser.email = email;
-          console.log("email", email);
         }
         if (mobile) {
-          console.log("mobile", mobile);
           newUser.mobile = mobile;
         }
         newUser.save((err, user) => {
@@ -100,30 +94,23 @@ class AccountController {
 
   static signin = async (req, res) => {
     const { username, password, email } = req.body;
-    console.log(req.body);
     var user;
     if ((username || email) && password) {
       try {
         if (username) {
-          console.log("not bb found");
           user = await UserModel.findOne({ username: username }).select(
             "+password"
           );
         } else {
-          console.log("uaer email found");
           user = await UserModel.findOne({ email: email }).select("+password");
         }
         if (user) {
-          console.log("password : ", password);
           const isvalidPassword = await bcrypt.compare(password, user.password);
-          console.log("user", user);
           if (isvalidPassword) {
             const id = user._id;
-            console.log("id", id);
             const token = jwt.sign({ _id: id }, process.env.JWT_SECRET_KEY, {
               expiresIn: 604800,
             });
-            console.log(user);
             res.status(200).json({
               status: "success",
               token: token,
@@ -131,14 +118,12 @@ class AccountController {
               message: "User logged in successfully",
             });
           } else {
-            console.log("not found");
             res.status(400).json({
               status: "failed",
               message: "Invalid Credientials",
             });
           }
         } else {
-          console.log("not found amil");
           res.status(400).json({
             status: "failed",
             message: "User not found",

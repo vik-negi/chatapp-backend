@@ -2,14 +2,16 @@ const pushNotification = require("../services/push_notification");
 
 class PushNotification {
   static SendNotificationInternal = async (data) => {
-    const { messageData, title, small_icon, large_icon } = data;
+    const { messageData, title, small_icon, large_icon, deviceNotificationId } =
+      data;
     var message = {
       app_id: process.env.ONESIGNAL_APP_ID,
       contents: { en: messageData },
       headings: { en: title },
-      included_segments: ["All"],
+      included_segments: ["include_player_ids"],
       content_available: true,
       small_icon: small_icon,
+      include_player_ids: deviceNotificationId,
       large_icon: large_icon,
       data: {
         pushTitle: "CUSTOM NOTIFICATION",

@@ -6,20 +6,37 @@ class ChatController {
   static getUserChat = async (req, res) => {
     try {
       const { senderUserId, receiverUserId } = req.params;
+      console.log(
+        `sender id : ${senderUserId}:: receiver id : ${receiverUserId}`
+      );
       const dbChats = await ChatModel.findOne({
-        $or: [{ senderUserId: senderUserId }, { senderUserId: receiverUserId }],
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
       });
+      console.log("dbChats", dbChats);
 
-      if (!dbChats || dbChats == []) {
-        return res.status(404).json({
-          status: "failed",
+      if (dbChats == null) {
+        var chatModelSender = await ChatModel({
+          receiverUserId: receiverUserId,
+          senderUserId: senderUserId,
+        });
+        var chatModelReciever = await ChatModel({
+          receiverUserId: senderUserId,
+          senderUserId: receiverUserId,
+        });
+        await chatModelSender.save();
+        await chatModelReciever.save();
+        const dbChats = await ChatModel.findOne({
+          senderUserId: senderUserId,
+          receiverUserId: receiverUserId,
+        });
+
+        return res.status(200).json({
+          status: "success",
+          data: dbChats,
           message: "No chats found",
         });
       }
-      // console.log(dbChats);
-      // console.log("hiiiii");
-
-      // const chats = [...senderChats.chat, ...receiverChats.chat];
       dbChats.chat.sort(function (a, b) {
         return Number(a.timestamp) - Number(b.timestamp);
       });
@@ -36,29 +53,26 @@ class ChatController {
 
   static createMessage = async (data) => {
     try {
-      // console.log("req.body", req.body);
       const { receiverUserId, senderUserId, message, messageType } = data;
-      console.log(receiverUserId, senderUserId, message);
+      console.log(data);
 
       if (!message) {
-        return json({
+        return res.json({
           status: "failed",
           message: "Please provide all the fields",
         });
       }
 
       const dbChats = await ChatModel.findOne({
-        $or: [
-          { senderUserId: senderUserId },
-          { receiverUserId: receiverUserId },
-        ],
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
       });
       const dbChatsOther = await ChatModel.findOne({
-        $or: [
-          { senderUserId: receiverUserId },
-          { receiverUserId: senderUserId },
-        ],
+        senderUserId: receiverUserId,
+        receiverUserId: senderUserId,
       });
+
+      console.log("dbChats", dbChats);
 
       const recieverUser = await UserModel.findById(receiverUserId);
       const user = await UserModel.findById(senderUserId);
@@ -77,14 +91,12 @@ class ChatController {
         isDeleted: false,
         isSent: true,
       };
-      console.log("chat", chat);
 
       if (messageType) {
         chat.messageType = messageType;
       } else {
         chat.messageType = "text";
       }
-      // console.log(dbChats);
       if (!dbChats) {
         var newChat = ChatModel({
           senderUserId: senderUserId,
@@ -164,7 +176,7 @@ class ChatController {
       console.log("senderUserId", senderUserId);
 
       const chats = await ChatModel.find({ senderUserId: senderUserId });
-      console.log("chats : ", chats);
+
       if (!chats) {
         return res.status(200).json({
           status: "failed",
@@ -175,39 +187,47 @@ class ChatController {
       var allUser = [];
 
       for (let i = 0; i < chats.length; i++) {
-        console.log("chat", chats[i]);
         var id = chats[i].receiverUserId;
-
-        console.log("id", id);
         const user = await UserModel.findById(id);
 
         var lastMessage = chats[i].chat[chats[i].chat.length - 1];
+        console.log("lastMessage", lastMessage);
         allUser.push({
           receiverId: id,
           username: user.username,
           profilePic: user.profileImage["url"],
-          lastMessage: lastMessage.message,
+          lastMessage: lastMessage.message === null ? "" : lastMessage.message,
           lastMessageTime: lastMessage.timestamp,
           lastMessageBy: lastMessage.sendBy,
           name: user.name,
         });
       }
 
-      console.log(allUser);
       return res.status(200).json({
         status: "success",
         data: allUser,
         message: "Chats found",
       });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      console.log("err", err);
+      res.status(500).json({
+        status: "failed",
+        message: err.message,
+      });
     }
   };
 
   static deleteChat = async (req, res) => {
     try {
-      const { senderReceiverId, chatId } = req.params;
-      console.log("chatId : ", chatId);
+      const { senderReceiverId } = req.params;
+      const { idsForDelete } = req.body;
+      if (!idsForDelete) {
+        return res.status(404).json({
+          status: "failed",
+          message: "Please provide ids",
+        });
+      }
+      var chatIds = JSON.parse(idsForDelete.replace(/(\w+)/g, '"$1"'));
       const chat = await ChatModel.findById(senderReceiverId);
       if (!chat) {
         return res.status(404).json({
@@ -215,6 +235,7 @@ class ChatController {
           message: "No chat found",
         });
       }
+
       await ChatModel.updateOne(
         {
           _id: senderReceiverId,
@@ -222,25 +243,61 @@ class ChatController {
         {
           $pull: {
             chat: {
-              _id: chatId,
+              _id: {
+                $in: chatIds,
+              },
             },
           },
         }
       );
+      // await ChatModel.updateOne(
+      //   {
+      //     _id: senderReceiverId,
+      //   },
+      //   {
+      //     $pull: {
+      //       chat: {
+      //         _id: chatId,
+      //       },
+      //     },
+      //   }
+      // );
       res.status(200).json({
         status: "success",
         message: "Chat deleted",
       });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      console.log(err);
+      res.status(500).json({
+        status: "failed",
+        message: err.message,
+      });
+    }
+  };
+
+  static setIsSent = async (req, res) => {
+    try {
+      const { senderReceiverId, chatId } = req.params;
+      var id = ChatModel.findById(senderReceiverId).lastRead;
+      if (!id) {
+        id = ChatModel.findById(senderReceiverId).chat[0]._id;
+      }
+
+      await ChatModel.updateOne(
+        { _id: senderReceiverId, "chat._id": { $gt: id } },
+        { $set: { "chat.$.isSent": true } }
+      );
+    } catch (err) {
+      res.status(500).json({
+        status: "failed",
+        message: err.message,
+      });
     }
   };
 
   static deleteAllChat = async (req, res) => {
     try {
       const { senderUserId, receiverUserId } = req.params;
-      console.log("senderUserId : ", senderUserId);
-      console.log("receiverUserId : ", receiverUserId);
       const chats = await ChatModel.find({
         $or: [
           {
