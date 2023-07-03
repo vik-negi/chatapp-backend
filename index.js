@@ -27,7 +27,7 @@ app.use(express.json());
 dotenv.config();
 
 //* Connect DB
-const db = config.get("mongoURI");
+const db = process.env.MONGODB_URI || config.get("mongoURI");
 mongoose
   .connect(db, {
     useNewUrlParser: true,
