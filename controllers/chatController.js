@@ -6,14 +6,11 @@ class ChatController {
   static getUserChat = async (req, res) => {
     try {
       const { senderUserId, receiverUserId } = req.params;
-      console.log(
-        `sender id : ${senderUserId}:: receiver id : ${receiverUserId}`
-      );
+
       const dbChats = await ChatModel.findOne({
         senderUserId: senderUserId,
         receiverUserId: receiverUserId,
       });
-      console.log("dbChats", dbChats);
 
       if (dbChats == null) {
         var chatModelSender = await ChatModel({
@@ -54,7 +51,6 @@ class ChatController {
   static createMessage = async (data) => {
     try {
       const { receiverUserId, senderUserId, message, messageType } = data;
-      console.log(data);
 
       if (!message) {
         return res.json({
@@ -71,8 +67,6 @@ class ChatController {
         senderUserId: receiverUserId,
         receiverUserId: senderUserId,
       });
-
-      console.log("dbChats", dbChats);
 
       const recieverUser = await UserModel.findById(receiverUserId);
       const user = await UserModel.findById(senderUserId);
@@ -155,7 +149,6 @@ class ChatController {
         message: "Message sent",
       };
     } catch (err) {
-      console.log("err", err);
       return {
         status: "failed",
         message: err.message,
@@ -173,7 +166,6 @@ class ChatController {
           message: "Invalid user",
         });
       }
-      console.log("senderUserId", senderUserId);
 
       const chats = await ChatModel.find({ senderUserId: senderUserId });
 
@@ -191,16 +183,19 @@ class ChatController {
         const user = await UserModel.findById(id);
 
         var lastMessage = chats[i].chat[chats[i].chat.length - 1];
-        console.log("lastMessage", lastMessage);
-        allUser.push({
-          receiverId: id,
-          username: user.username,
-          profilePic: user.profileImage["url"],
-          lastMessage: lastMessage.message === null ? "" : lastMessage.message,
-          lastMessageTime: lastMessage.timestamp,
-          lastMessageBy: lastMessage.sendBy,
-          name: user.name,
-        });
+
+        if (lastMessage !== undefined && lastMessage !== null) {
+          allUser.push({
+            receiverId: id,
+            username: user.username,
+            profilePic: user.profileImage["url"],
+            lastMessage:
+              lastMessage.message === null ? "" : lastMessage.message,
+            lastMessageTime: lastMessage.timestamp,
+            lastMessageBy: lastMessage.sendBy,
+            name: user.name,
+          });
+        }
       }
 
       return res.status(200).json({
@@ -209,7 +204,6 @@ class ChatController {
         message: "Chats found",
       });
     } catch (err) {
-      console.log("err", err);
       res.status(500).json({
         status: "failed",
         message: err.message,
@@ -267,7 +261,6 @@ class ChatController {
         message: "Chat deleted",
       });
     } catch (err) {
-      console.log(err);
       res.status(500).json({
         status: "failed",
         message: err.message,
@@ -393,9 +386,7 @@ class ChatController {
         status: "success",
         message: `${select} updated`,
       });
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) {}
   };
 }
 

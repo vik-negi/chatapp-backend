@@ -52,14 +52,10 @@ var io = require("socket.io")(server, {
 const PushNotification = require("./controllers/push_notification.js");
 const client = new Map();
 io.on("connection", (socket) => {
-  console.log("a user connected");
   socket.on("join", (room) => {
-    console.log("joined room", room);
     socket.join(room);
   });
   socket.on("signin", (id) => {
-    console.log(socket.id, "has signin");
-    console.log(id, "id has signin");
     socket.user = {
       id: id,
     };
@@ -71,7 +67,7 @@ io.on("connection", (socket) => {
     var returnData = await ChatController.createMessage(message);
     const sender = await UserModel.findById(message.senderUserId);
     const receiver = await UserModel.findById(message.receiverUserId);
-    console.log("user sender : ", sender);
+
     if (receiverSocket) {
       await receiverSocket.emit("message", returnData);
     } else {
@@ -86,7 +82,6 @@ io.on("connection", (socket) => {
     // io.to(message.room).emit("message", message);
   });
   socket.on("disconnect", () => {
-    console.log("user disconnected");
     if (socket.user.id) {
       client.delete(socket.user.id);
     }

@@ -20,16 +20,13 @@ class PushNotification {
 
     pushNotification.SendNotification(message, (err, data) => {
       if (err) {
-        console.log(err);
         return false;
       } else {
-        console.log(data);
         return true;
       }
     });
   };
   static SendNotification = async (req, res, next) => {
-    console.log("req.body", req.body);
     //   const { messageData, title } = req.body;
     var message = {
       app_id: process.env.ONESIGNAL_APP_ID,
@@ -45,10 +42,8 @@ class PushNotification {
 
     pushNotification.SendNotification(message, (err, data) => {
       if (err) {
-        console.log(err);
         return next(err);
       } else {
-        console.log(data);
         return res.status(200).json({
           status: "success",
           data: data,
@@ -72,10 +67,8 @@ class PushNotification {
     };
     pushNotification.SendNotification(message, (err, data) => {
       if (err) {
-        console.log(err);
         return next(err);
       } else {
-        console.log(data);
         return res.status(200).json({
           status: "success",
           data: data,
