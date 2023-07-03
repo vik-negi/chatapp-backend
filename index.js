@@ -94,8 +94,8 @@ io.on("connection", (socket) => {
 });
 
 // Routes
-const chatRouter = require("./routes/chat");
-const accountRouter = require("./routes/account");
+const chatRouter = require("./routes/chat.js");
+const accountRouter = require("./routes/account.js");
 
 // let cpUpload = multerUploads.fields([{ name: "image", maxCount: 4 }]);
 app.use("/account", accountRouter);

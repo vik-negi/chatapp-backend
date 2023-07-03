@@ -2,10 +2,11 @@
   "name": "nodeapi",
   "version": "1.0.0",
   "description": "Node js backend for amazon app",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server",
-    "server": "nodemon server"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+
   },
   "author": "Samuel Anthony",
   "license": "MIT",
