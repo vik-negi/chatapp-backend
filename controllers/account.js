@@ -111,32 +111,32 @@ class AccountController {
             const token = jwt.sign({ _id: id }, process.env.JWT_SECRET_KEY, {
               expiresIn: 604800,
             });
-            res.status(200).json({
+            return res.status(200).json({
               status: "success",
               token: token,
               data: user,
               message: "User logged in successfully",
             });
           } else {
-            res.status(400).json({
+            return res.status(400).json({
               status: "failed",
               message: "Invalid Credientials",
             });
           }
         } else {
-          res.status(400).json({
+          return res.status(400).json({
             status: "failed",
             message: "User not found",
           });
         }
       } catch (err) {
-        res.status(400).json({
+        return res.status(400).json({
           status: "failed",
           message: err.message,
         });
       }
     } else {
-      res.status(400).json({
+      return res.status(400).json({
         status: "failed",
         message: "All fields are required",
       });
@@ -174,7 +174,7 @@ class AccountController {
     }
   };
   static userInfo = (req, res) => {
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       data: req.user,
       message: "User information",
