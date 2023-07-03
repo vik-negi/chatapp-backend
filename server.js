@@ -101,7 +101,7 @@ const accountRouter = require("./routes/account");
 app.use("/account", accountRouter);
 app.use("/chat", chatRouter);
 app.use("/send", require("./routes/notification.js"));
-app.use("/", (req, res) => {
+app.use("/demo", (req, res) => {
   return res.json({
     msg: "Hello World",
   });
