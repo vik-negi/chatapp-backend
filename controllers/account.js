@@ -92,106 +92,53 @@ class AccountController {
     }
   };
 
-  // static signin = async (req, res) => {
-  //   const { username, password, email } = req.body;
-  //   var user;
-  //   if ((username || email) && password) {
-  //     try {
-  //       if (username) {
-  //         user = await UserModel.findOne({ username: username }).select(
-  //           "+password"
-  //         );
-  //       } else {
-  //         user = await UserModel.findOne({ email: email }).select("+password");
-  //       }
-  //       if (user) {
-  //         const isvalidPassword = await bcrypt.compare(password, user.password);
-  //         if (isvalidPassword) {
-  //           const id = user._id;
-  //           const token = jwt.sign({ _id: id }, process.env.JWT_SECRET_KEY, {
-  //             expiresIn: 604800,
-  //           });
-  //           return res.status(200).json({
-  //             status: "success",
-  //             token: token,
-  //             data: user,
-  //             message: "User logged in successfully",
-  //           });
-  //         } else {
-  //           return res.status(400).json({
-  //             status: "failed",
-  //             message: "Invalid Credientials",
-  //           });
-  //         }
-  //       } else {
-  //         return res.status(400).json({
-  //           status: "failed",
-  //           message: "User not found",
-  //         });
-  //       }
-  //     } catch (err) {
-  //       return res.status(400).json({
-  //         status: "failed",
-  //         message: err.message,
-  //       });
-  //     }
-  //   } else {
-  //     return res.status(400).json({
-  //       status: "failed",
-  //       message: "All fields are required",
-  //     });
-  //   }
-  // };
   static signin = async (req, res) => {
     const { username, password, email } = req.body;
-
-    if ((!username && !email) || !password) {
+    var user;
+    if ((username || email) && password) {
+      try {
+        if (username) {
+          user = await UserModel.findOne({ username: username }).select(
+            "+password"
+          );
+        } else {
+          user = await UserModel.findOne({ email: email }).select("+password");
+        }
+        if (user) {
+          const isvalidPassword = await bcrypt.compare(password, user.password);
+          if (isvalidPassword) {
+            const id = user._id;
+            const token = jwt.sign({ _id: id }, process.env.JWT_SECRET_KEY, {
+              expiresIn: 604800,
+            });
+            return res.status(200).json({
+              status: "success",
+              token: token,
+              data: user,
+              message: "User logged in successfully",
+            });
+          } else {
+            return res.status(400).json({
+              status: "failed",
+              message: "Invalid Credientials",
+            });
+          }
+        } else {
+          return res.status(400).json({
+            status: "failed",
+            message: "User not found",
+          });
+        }
+      } catch (err) {
+        return res.status(400).json({
+          status: "failed",
+          message: err.message,
+        });
+      }
+    } else {
       return res.status(400).json({
         status: "failed",
         message: "All fields are required",
-      });
-    }
-
-    try {
-      let user;
-
-      if (username) {
-        user = await UserModel.findOne({ username }).select("+password");
-      } else {
-        user = await UserModel.findOne({ email }).select("+password");
-      }
-
-      if (!user) {
-        return res.status(400).json({
-          status: "failed",
-          message: "User not found",
-        });
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-
-      if (!isPasswordValid) {
-        return res.status(400).json({
-          status: "failed",
-          message: "Invalid credentials",
-        });
-      }
-
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY, {
-        expiresIn: "7d",
-      });
-
-      return res.status(200).json({
-        status: "success",
-        token,
-        data: user,
-        message: "User logged in successfully",
-      });
-    } catch (err) {
-      return res.status(500).json({
-        status: "failed",
-        message: "An error occurred",
-        error: err.message,
       });
     }
   };
