@@ -67,6 +67,9 @@ io.on("connection", (socket) => {
     var returnData = await ChatController.createMessage(message);
     const sender = await UserModel.findById(message.senderUserId);
     const receiver = await UserModel.findById(message.receiverUserId);
+    if (sender._id == receiver._id) {
+      return;
+    }
 
     if (receiverSocket) {
       await receiverSocket.emit("message", returnData);
