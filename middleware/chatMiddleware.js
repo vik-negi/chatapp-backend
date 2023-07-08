@@ -1,4 +1,4 @@
-const UserModel = require("../schema/userSchema.js");
+const { User } = require("../schema/userSchema.js");
 var chatMiddleware = async (req, res, next) => {
   const { receiverUserId, senderUserId } = req.params;
   if (!receiverUserId || !senderUserId) {
@@ -7,8 +7,8 @@ var chatMiddleware = async (req, res, next) => {
       message: "Please provide all the fields",
     });
   }
-  const senderUser = await UserModel.findById(senderUserId);
-  const receiverUser = await UserModel.findById(receiverUserId);
+  const senderUser = await User.findById(senderUserId);
+  const receiverUser = await User.findById(receiverUserId);
   if (!senderUser || !receiverUser) {
     return res.status(404).json({
       status: "failed",

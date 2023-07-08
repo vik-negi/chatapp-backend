@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const UserModel = require("../schema/userSchema.js");
+const { User } = require("../schema/userSchema.js");
 // import dotenv from "dotenv";
 var checkUserAuth = async (req, res, next) => {
   let token;
@@ -10,7 +10,7 @@ var checkUserAuth = async (req, res, next) => {
 
       const userId = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
-      req.user = await UserModel.findById(userId).select("-password");
+      req.user = await User.findById(userId).select("-password");
       next();
     } catch (error) {
       res.status(401).send({ status: "failed", message: "Unauthorized User" });

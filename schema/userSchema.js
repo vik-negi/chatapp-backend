@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+const { conn, connMe } = require("../config/db.js");
 
 const UserSchema = new Schema(
   {
@@ -174,4 +175,10 @@ const UserSchema = new Schema(
 );
 UserSchema.index({ location: "2dsphere" });
 
-module.exports = User = mongoose.model("user", UserSchema);
+const UserMe = connMe.model("userMe", UserSchema);
+const User = conn.model("user", UserSchema);
+
+module.exports = {
+  UserMe,
+  User,
+};

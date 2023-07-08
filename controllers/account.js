@@ -1,4 +1,5 @@
-const UserModel = require("../schema/userSchema");
+const { User, UserMe } = require("../schema/userSchema");
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
@@ -17,7 +18,7 @@ class AccountController {
     ) {
       if (req.body["email"]) {
         emailOrMobile = req.body["email"].toLowerCase();
-        const emailExists = await UserModel.findOne({ email: emailOrMobile });
+        const emailExists = await User.findOne({ email: emailOrMobile });
         if (emailExists) {
           return res.json({
             status: "failed",
@@ -27,7 +28,7 @@ class AccountController {
       }
       if (req.body["mobile"]) {
         emailOrMobile = req.body["mobile"].toLowerCase();
-        const mobileExists = await UserModel.findOne({ mobile: emailOrMobile });
+        const mobileExists = await User.findOne({ mobile: emailOrMobile });
         if (mobileExists) {
           return res.status(400).json({
             status: "failed",
@@ -36,12 +37,12 @@ class AccountController {
         }
       }
       try {
-        const user = await UserModel.findOne({ username: username });
+        const user = await User.findOne({ username: username });
         if (user) {
           return res.status(400).json({ message: "Username already exists" });
         }
         const id = new Date().toJSON();
-        const existing = await UserModel.findOne({
+        const existing = await User.findOne({
           id: id,
         });
         if (existing) {
@@ -53,7 +54,14 @@ class AccountController {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const newUser = new UserModel({
+        const newUser = new User({
+          username: username,
+          password: hashedPassword,
+          name: name,
+          deviceNotificationId: deviceNotificationId,
+        });
+
+        const newUserMe = new UserMe({
           username: username,
           password: hashedPassword,
           name: name,
@@ -61,9 +69,11 @@ class AccountController {
         });
         if (email) {
           newUser.email = email;
+          newUserMe.email = email;
         }
         if (mobile) {
           newUser.mobile = mobile;
+          newUserMe.mobile = mobile;
         }
         newUser.save((err, user) => {
           if (err) {
@@ -78,6 +88,7 @@ class AccountController {
             });
           }
         });
+        newUserMe.save();
       } catch (err) {
         return res.status(400).json({
           status: "failed",
@@ -98,11 +109,9 @@ class AccountController {
     if ((username || email) && password) {
       try {
         if (username) {
-          user = await UserModel.findOne({ username: username }).select(
-            "+password"
-          );
+          user = await User.findOne({ username: username }).select("+password");
         } else {
-          user = await UserModel.findOne({ email: email }).select("+password");
+          user = await User.findOne({ email: email }).select("+password");
         }
         if (user) {
           const isvalidPassword = await bcrypt.compare(password, user.password);
@@ -147,7 +156,7 @@ class AccountController {
     const { username } = req.params;
     if (username) {
       try {
-        const users = await UserModel.find({
+        const users = await User.find({
           $or: [
             { username: { $regex: username, $options: "i" } },
             { name: { $regex: username, $options: "i" } },

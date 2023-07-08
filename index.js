@@ -7,7 +7,7 @@ const http = require("http");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const ChatController = require("./controllers/chatController.js");
-const UserModel = require("./schema/userSchema.js");
+const { User } = require("./schema/userSchema.js");
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const app = express();
@@ -27,17 +27,6 @@ app.use(express.json());
 dotenv.config();
 
 //* Connect DB
-const db = process.env.MONGODB_URI || config.get("mongoURI");
-mongoose
-  .connect(db, {
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false,
-  })
-  .then(() => console.log("Mongodb is connected..."))
-  .catch((err) => console.log(err));
-
 //* Log route actions
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
@@ -65,8 +54,8 @@ io.on("connection", (socket) => {
     let receiverUserId = message.receiverUserId;
     const receiverSocket = client.get(receiverUserId);
     var returnData = await ChatController.createMessage(message);
-    const sender = await UserModel.findById(message.senderUserId);
-    const receiver = await UserModel.findById(message.receiverUserId);
+    const sender = await User.findById(message.senderUserId);
+    const receiver = await User.findById(message.receiverUserId);
     if (sender._id == receiver._id) {
       return;
     }
@@ -97,7 +86,14 @@ const accountRouter = require("./routes/account.js");
 
 // let cpUpload = multerUploads.fields([{ name: "image", maxCount: 4 }]);
 app.use("/account", accountRouter);
-app.use("/chat", chatRouter);
+app.use(
+  "/chat",
+  (req, res, next) => {
+    console.log("chat");
+    next();
+  },
+  chatRouter
+);
 app.use("/send", require("./routes/notification.js"));
 app.use("/demo", (req, res) => {
   return res.json({
@@ -106,7 +102,6 @@ app.use("/demo", (req, res) => {
 });
 
 const port = process.env.PORT || 5000;
-
 server.listen(port, () => {
   console.log(`Server started on port ${port}`);
 });

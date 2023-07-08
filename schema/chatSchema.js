@@ -1,4 +1,5 @@
 const Mongoose = require("mongoose");
+const { conn, connMe } = require("../config/db.js");
 
 const ChatSchema = new Mongoose.Schema(
   {
@@ -99,4 +100,9 @@ const ChatSchema = new Mongoose.Schema(
   { Timestamp: true }
 );
 
-module.exports = Chat = Mongoose.model("chat", ChatSchema);
+const ChatMe = connMe.model("chatMe", ChatSchema);
+const Chat = conn.model("chat", ChatSchema);
+module.exports = {
+  ChatMe,
+  Chat,
+};

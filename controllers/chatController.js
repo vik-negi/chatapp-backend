@@ -1,5 +1,6 @@
-const UserModel = require("../schema/userSchema");
-const ChatModel = require("../schema/chatSchema");
+const { User, UserMe } = require("../schema/userSchema");
+const { Chat, ChatMe } = require("../schema/chatSchema");
+
 const { Mongoose, ObjectId } = require("mongoose");
 
 class ChatController {
@@ -7,23 +8,23 @@ class ChatController {
     try {
       const { senderUserId, receiverUserId } = req.params;
 
-      const dbChats = await ChatModel.findOne({
+      const dbChats = await Chat.findOne({
         senderUserId: senderUserId,
         receiverUserId: receiverUserId,
       });
 
       if (dbChats == null) {
-        var chatModelSender = await ChatModel({
+        var ChatSender = await Chat({
           receiverUserId: receiverUserId,
           senderUserId: senderUserId,
         });
-        var chatModelReciever = await ChatModel({
+        var ChatReciever = await Chat({
           receiverUserId: senderUserId,
           senderUserId: receiverUserId,
         });
-        await chatModelSender.save();
-        await chatModelReciever.save();
-        const dbChats = await ChatModel.findOne({
+        await ChatSender.save();
+        await ChatReciever.save();
+        const dbChats = await Chat.findOne({
           senderUserId: senderUserId,
           receiverUserId: receiverUserId,
         });
@@ -59,17 +60,13 @@ class ChatController {
         });
       }
 
-      const dbChats = await ChatModel.findOne({
+      const dbChats = await Chat.findOne({
         senderUserId: senderUserId,
         receiverUserId: receiverUserId,
       });
-      const dbChatsOther = await ChatModel.findOne({
-        senderUserId: receiverUserId,
-        receiverUserId: senderUserId,
-      });
 
-      const recieverUser = await UserModel.findById(receiverUserId);
-      const user = await UserModel.findById(senderUserId);
+      const recieverUser = await User.findById(receiverUserId);
+      const user = await User.findById(senderUserId);
       const recieveBy = recieverUser.username;
       var chat = {
         message: message,
@@ -78,11 +75,6 @@ class ChatController {
         sendBy: user.username,
         recieveBy: recieveBy,
         timestamp: Date.now(),
-        isReceived: false,
-        isRead: false,
-        isPinned: false,
-        isForwarded: false,
-        isDeleted: false,
         isSent: true,
       };
 
@@ -92,33 +84,106 @@ class ChatController {
         chat.messageType = "text";
       }
       if (!dbChats) {
-        var newChat = ChatModel({
+        await Chat.create({
           senderUserId: senderUserId,
           receiverUserId: receiverUserId,
-          chat: [],
+          chat: [chat],
         });
-        var newChatOther = ChatModel({
+        await ChatMe.create({
+          senderUserId: senderUserId,
+          receiverUserId: receiverUserId,
+          chat: [chat],
+        });
+        await Chat.create({
           receiverUserId: senderUserId,
           senderUserId: receiverUserId,
-          chat: [],
+          chat: [chat],
         });
-        recieverUser.chatWith.push({
-          user: senderUserId,
-          image: user.profileImage.url,
-          lastMessage: chat,
+        ChatMe.create({
+          receiverUserId: senderUserId,
+          senderUserId: receiverUserId,
+          chat: [chat],
         });
-        user.chatWith.push({
-          user: receiverUserId,
-          image: recieverUser.profileImage.url,
-          lastMessage: chat,
-        });
-        user.save();
-        recieverUser.save();
-        newChat.chat.push(chat);
-        newChatOther.chat.push(chat);
+        // Chat({
+        //   senderUserId: senderUserId,
+        //   receiverUserId: receiverUserId,
+        //   chat: [],
+        // });
+        // var newChatMe = ChatMe({
+        //   senderUserId: senderUserId,
+        //   receiverUserId: receiverUserId,
+        //   chat: [],
+        // });
+        // var newChatOther = Chat({
+        //   receiverUserId: senderUserId,
+        //   senderUserId: receiverUserId,
+        //   chat: [],
+        // });
 
-        await newChat.save();
-        await newChatOther.save();
+        // var newChatOtherMe = ChatMe({
+        //   receiverUserId: senderUserId,
+        //   senderUserId: receiverUserId,
+        //   chat: [],
+        // });
+        // recieverUser.chatWith.push({
+        //   user: senderUserId,
+        //   image: user.profileImage.url,
+        //   lastMessage: chat,
+        // });
+        await User.findOneAndUpdate(
+          { _id: receiverUserId },
+          {
+            $push: {
+              chatWith: {
+                user: senderUserId,
+                image: user.profileImage.url,
+                lastMessage: chat,
+              },
+            },
+          },
+          { new: true }
+        );
+        await UserMe.findOneAndUpdate(
+          { _id: receiverUserId },
+          {
+            $push: {
+              chatWith: {
+                user: senderUserId,
+                image: user.profileImage.url,
+                lastMessage: chat,
+              },
+            },
+          },
+          { new: true }
+        );
+        await User.findOneAndUpdate(
+          { _id: senderUserId },
+          {
+            $push: {
+              chatWith: {
+                user: receiverUserId,
+                image: recieverUser.profileImage.url,
+                lastMessage: chat,
+              },
+            },
+          },
+          { new: true }
+        );
+
+        await UserMe.findOneAndUpdate(
+          { _id: senderUserId },
+          {
+            $push: {
+              chatWith: {
+                user: receiverUserId,
+                image: recieverUser.profileImage.url,
+                lastMessage: chat,
+              },
+            },
+          },
+          { new: true }
+        );
+
         return {
           status: "success",
           data: nchat,
@@ -126,22 +191,103 @@ class ChatController {
         };
       }
 
-      for (let i = 0; i < recieverUser.chatWith.length; i++) {
-        if (recieverUser.chatWith[i].user == senderUserId) {
-          recieverUser.chatWith[i].lastMessage = chat;
-        }
-      }
-      for (let i = 0; i < user.chatWith.length; i++) {
-        if (user.chatWith[i].senderUserId == receiverUserId) {
-          user.chatWith[i].lastMessage = chat;
-        }
-      }
-      await recieverUser.save();
-      dbChats.chat.push(chat);
-      dbChatsOther.chat.push(chat);
-      await dbChats.save();
-      await dbChatsOther.save();
-      const nchat = dbChats.chat[dbChats.chat.length - 1];
+      await User.findOneAndUpdate(
+        { _id: receiverUserId },
+        {
+          $push: {
+            chatWith: {
+              user: senderUserId,
+              image: user.profileImage.url,
+              lastMessage: chat,
+            },
+          },
+        },
+        { new: true }
+      );
+      await UserMe.findOneAndUpdate(
+        { _id: receiverUserId },
+        {
+          $push: {
+            chatWith: {
+              user: senderUserId,
+              image: user.profileImage.url,
+              lastMessage: chat,
+            },
+          },
+        },
+        { new: true }
+      );
+      await User.findOneAndUpdate(
+        { _id: senderUserId },
+        {
+          $push: {
+            chatWith: {
+              user: receiverUserId,
+              image: recieverUser.profileImage.url,
+              lastMessage: chat,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await UserMe.findOneAndUpdate(
+        { _id: senderUserId },
+        {
+          $push: {
+            chatWith: {
+              user: receiverUserId,
+              image: recieverUser.profileImage.url,
+              lastMessage: chat,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await Chat.findOneAndUpdate(
+        { senderUserId: senderUserId, receiverUserId: receiverUserId },
+        {
+          $push: {
+            chat: chat,
+          },
+        },
+        { new: true }
+      );
+
+      await ChatMe.findOneAndUpdate(
+        { senderUserId: senderUserId, receiverUserId: receiverUserId },
+        {
+          $push: {
+            chat: chat,
+          },
+        },
+        { new: true }
+      );
+      await Chat.findOneAndUpdate(
+        { senderUserId: receiverUserId, receiverUserId: senderUserId },
+        {
+          $push: {
+            chat: chat,
+          },
+        },
+        { new: true }
+      );
+      await ChatMe.findOneAndUpdate(
+        { senderUserId: receiverUserId, receiverUserId: senderUserId },
+        {
+          $push: {
+            chat: chat,
+          },
+        },
+        { new: true }
+      );
+
+      const dbChatsnew = await Chat.findOne({
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
+      });
+      const nchat = dbChatsnew.chat[dbChatsnew.chat.length - 1];
 
       return {
         status: "success",
@@ -156,6 +302,122 @@ class ChatController {
     }
   };
 
+  // Helper function to find chat documents
+
+  // Main function to create a message
+  // static createMessage = async (data) => {
+  //   try {
+  //     const { receiverUserId, senderUserId, message, messageType } = data;
+
+  //     if (!message) {
+  //       return {
+  //         status: "failed",
+  //         message: "Please provide all the fields",
+  //       };
+  //     }
+
+  //     const { dbChats, dbChatsMe, dbChatsOther, dbChatsOtherMe } =
+  //       await findChats(senderUserId, receiverUserId);
+
+  //     const [recieverUser, user, recieverUserMe, userMe] = await Promise.all([
+  //       User.findById(receiverUserId),
+  //       User.findById(senderUserId),
+  //       UserMe.findById(receiverUserId),
+  //       UserMe.findById(senderUserId),
+  //     ]);
+
+  //     const recieveBy = recieverUser.username;
+
+  //     const chat = {
+  //       message,
+  //       receiverUserId,
+  //       senderUserId,
+  //       sendBy: user.username,
+  //       recieveBy,
+  //       timestamp: Date.now(),
+  //       isReceived: false,
+  //       isRead: false,
+  //       isPinned: false,
+  //       isForwarded: false,
+  //       isDeleted: false,
+  //       isSent: true,
+  //       messageType: messageType || "text",
+  //     };
+
+  //     if (!dbChats) {
+  //       await createChat(senderUserId, receiverUserId, chat);
+
+  //       recieverUser.chatWith.push({
+  //         user: senderUserId,
+  //         image: user.profileImage.url,
+  //         lastMessage: chat,
+  //       });
+  //       recieverUserMe.chatWith.push({
+  //         user: senderUserId,
+  //         image: user.profileImage.url,
+  //         lastMessage: chat,
+  //       });
+  //       user.chatWith.push({
+  //         user: receiverUserId,
+  //         image: recieverUser.profileImage.url,
+  //         lastMessage: chat,
+  //       });
+  //       userMe.chatWith.push({
+  //         user: receiverUserId,
+  //         image: recieverUser.profileImage.url,
+  //         lastMessage: chat,
+  //       });
+
+  //       await updateChatWith(
+  //         recieverUser,
+  //         user,
+  //         recieverUserMe,
+  //         userMe,
+  //         senderUserId,
+  //         receiverUserId,
+  //         chat
+  //       );
+
+  //       return {
+  //         status: "success",
+  //         data: chat,
+  //         message: "Message sent",
+  //       };
+  //     }
+
+  //     await updateChatWith(
+  //       recieverUser,
+  //       user,
+  //       recieverUserMe,
+  //       userMe,
+  //       senderUserId,
+  //       receiverUserId,
+  //       chat
+  //     );
+
+  //     dbChats.chat.push(chat);
+  //     dbChatsOther.chat.push(chat);
+
+  //     await Promise.all([
+  //       dbChats.save(),
+  //       dbChatsMe.save(),
+  //       dbChatsOther.save(),
+  //       dbChatsOtherMe.save(),
+  //     ]);
+
+  //     return {
+  //       status: "success",
+  //       data: chat,
+  //       message: "Message sent",
+  //     };
+  //   } catch (err) {
+  //     return {
+  //       status: "failed",
+  //       message: err.message,
+  //     };
+  //   }
+  // };
+
   static getAllUser = async (req, res) => {
     try {
       const { senderUserId } = req.params;
@@ -167,7 +429,9 @@ class ChatController {
         });
       }
 
-      const chats = await ChatModel.find({ senderUserId: senderUserId });
+      const chats = await Chat.find({
+        senderUserId: senderUserId,
+      });
 
       if (!chats) {
         return res.status(200).json({
@@ -180,7 +444,7 @@ class ChatController {
 
       for (let i = 0; i < chats.length; i++) {
         var id = chats[i].receiverUserId;
-        const user = await UserModel.findById(id);
+        const user = await User.findById(id);
 
         var lastMessage = chats[i].chat[chats[i].chat.length - 1];
 
@@ -222,7 +486,7 @@ class ChatController {
         });
       }
       var chatIds = JSON.parse(idsForDelete.replace(/(\w+)/g, '"$1"'));
-      const chat = await ChatModel.findById(senderReceiverId);
+      const chat = await Chat.findById(senderReceiverId);
       if (!chat) {
         return res.status(404).json({
           status: "failed",
@@ -230,7 +494,7 @@ class ChatController {
         });
       }
 
-      await ChatModel.updateOne(
+      await Chat.updateOne(
         {
           _id: senderReceiverId,
         },
@@ -244,7 +508,7 @@ class ChatController {
           },
         }
       );
-      // await ChatModel.updateOne(
+      // await Chat.updateOne(
       //   {
       //     _id: senderReceiverId,
       //   },
@@ -271,12 +535,12 @@ class ChatController {
   static setIsSent = async (req, res) => {
     try {
       const { senderReceiverId, chatId } = req.params;
-      var id = ChatModel.findById(senderReceiverId).lastRead;
+      var id = Chat.findById(senderReceiverId).lastRead;
       if (!id) {
-        id = ChatModel.findById(senderReceiverId).chat[0]._id;
+        id = Chat.findById(senderReceiverId).chat[0]._id;
       }
 
-      await ChatModel.updateOne(
+      await Chat.updateOne(
         { _id: senderReceiverId, "chat._id": { $gt: id } },
         { $set: { "chat.$.isSent": true } }
       );
@@ -291,7 +555,7 @@ class ChatController {
   static deleteAllChat = async (req, res) => {
     try {
       const { senderUserId, receiverUserId } = req.params;
-      const chats = await ChatModel.find({
+      const chats = await Chat.find({
         $or: [
           {
             senderUserId: senderUserId,
@@ -326,7 +590,7 @@ class ChatController {
       const { isPinned, isForwarded, reaction, isReceived, isDeleted, isRead } =
         req.body;
       const { senderReceiverId, chatId } = req.params;
-      const chat = await ChatModel.findById(senderReceiverId);
+      const chat = await Chat.findById(senderReceiverId);
       if (!chat) {
         return res.status(404).json({
           status: "failed",
@@ -377,7 +641,7 @@ class ChatController {
         arrayFilters: [{ "element._id": chatId }],
       };
 
-      const result = await ChatModel.updateOne(
+      const result = await Chat.updateOne(
         { _id: senderReceiverId },
         update,
         options

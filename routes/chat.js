@@ -5,6 +5,11 @@ const chatMiddleware = require("../middleware/chatMiddleware.js");
 
 const chatRouter = Router();
 
+chatRouter.get(
+  "/getAllUser/:senderUserId",
+  checkUserAuth,
+  ChatController.getAllUser
+);
 chatRouter.post(
   "/sendMessage/:senderUserId/:receiverUserId",
   checkUserAuth,
@@ -17,11 +22,7 @@ chatRouter.get(
   chatMiddleware,
   ChatController.getUserChat
 );
-chatRouter.get(
-  "/getAllUser/:senderUserId",
-  checkUserAuth,
-  ChatController.getAllUser
-);
+
 chatRouter.get(
   "/setIsSent/:senderUserId/:chatId",
   checkUserAuth,
