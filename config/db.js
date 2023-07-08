@@ -11,9 +11,6 @@ const options = {
 var dbme = process.env.MONGODBURI;
 var db = process.env.MONGODB_URI;
 
-console.log("dbme", dbme);
-console.log("db", db);
-
 const conn = mongoose.createConnection(db, options);
 const connMe = mongoose.createConnection(dbme, options);
 
