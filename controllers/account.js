@@ -2,6 +2,17 @@ const { User, UserMe } = require("../schema/userSchema");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const sendOTPEmail = require("../utils/send_mail");
+const OTP = require("../schema/otpSchema");
+
+const generateOTP = () => {
+  const digits = "0123456789";
+  let OTP = "";
+  for (let i = 0; i < 4; i++) {
+    OTP += digits[Math.floor(Math.random() * 10)];
+  }
+  return OTP;
+};
 
 class AccountController {
   static signup = async (req, res) => {
@@ -181,6 +192,166 @@ class AccountController {
       });
     }
   };
+
+  static forgetPassword = async (req, res) => {
+    const { email } = req.body;
+
+    const user = User.findOne({ email: email });
+
+    if (!user) {
+      return res.status(400).json({
+        status: "failed",
+        message: "User not found",
+      });
+    }
+
+    const otp = generateOTP();
+
+    let mailData = `
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Forgot Password - ${user.name}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #444;
+      }
+      h1 {
+        color: #007bff;
+      }
+      h2 {
+        color: #007bff;
+      }
+      h3 {
+        color: #007bff;
+      }
+      p {
+        margin-bottom: 10px;
+      }
+      .highlight {
+        background-color: #ffe5b4;
+        padding: 5px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+   <h1> Hello ${user.name} </h1>
+    <h2> You have requested to reset your password </h2>
+    <p> Please use the following OTP to reset your password </p>
+    <h3 class="highlight"> ${otp} </h3>
+    <p> If you did not request a password reset, please ignore this email or reply to let us know. This password reset is only valid for the next 24 hours. </p>
+    <p> Thanks, </p>
+    <p> The ChatApp Team </p>
+
+  </body>
+</html>
+`;
+
+    const isSent = await sendOTPEmail(email, mailData, false);
+
+    if (isSent) {
+      var otpData = await OTP.findOne({ email: email });
+
+      if (otpData) {
+        await OTP.findOneAndUpdate(
+          { email: email },
+          { otp: otp, verified: false },
+          { new: true }
+        );
+      } else {
+        await OTP.create({
+          email,
+          otp,
+        });
+      }
+      return res.status(200).json({
+        status: "success",
+        message: "OTP sent successfully",
+      });
+    }
+    return res.status(400).json({
+      status: "failed",
+      message: "Error sending OTP",
+    });
+  };
+
+  static verifyOtp = async (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).send({
+        status: "failed",
+        message: "Required fields missing",
+      });
+    }
+    try {
+      const otpData = await OTP.findOne({ email: email });
+      if (!otpData) {
+        return res.status(404).send({
+          status: "failed",
+          message: "OTP not found",
+        });
+      }
+      if (otpData.otp !== otp) {
+        return res.status(404).send({
+          status: "failed",
+          message: "Invalid OTP",
+        });
+      }
+      otpData.verified = true;
+      otpData.save();
+      return res.status(200).send({
+        status: "ok",
+        message: "OTP verified successfully",
+      });
+    } catch (e) {
+      return res.status(500).send({ status: "failed", message: e.message });
+    }
+  };
+
+  static changePasswordOtp = async (req, res) => {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+      return res.status(400).send({
+        status: "failed",
+        message: "Required fields missing",
+      });
+    }
+    try {
+      const otpData = await OTP.findOne({ email });
+      if (!otpData) {
+        return res.status(404).send({
+          status: "failed",
+          message: "OTP not found",
+        });
+      }
+      if (!otpData.verified) {
+        return res.status(404).send({
+          status: "failed",
+          message: "OTP not verified",
+        });
+      }
+      const hash = await bcrypt.hash(newPassword, 8);
+
+      var user = await User.findOneAndUpdate({ email }, { password: hash });
+      if (!user) {
+        return res.status(404).send({
+          status: "failed",
+          message: "User not found",
+        });
+      }
+      await OTP.findOneAndDelete({ email });
+      return res.status(200).send({
+        status: "ok",
+        message: "Password changed successfully",
+      });
+    } catch (e) {
+      return res.status(500).send({ status: "failed", message: e.message });
+    }
+  };
+
   static userInfo = (req, res) => {
     return res.status(200).json({
       status: "success",
