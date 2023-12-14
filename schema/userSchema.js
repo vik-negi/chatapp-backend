@@ -175,10 +175,8 @@ const UserSchema = new Schema(
 );
 UserSchema.index({ location: "2dsphere" });
 
-const UserMe = connMe.model("userMe", UserSchema);
 const User = conn.model("user", UserSchema);
 
 module.exports = {
-  UserMe,
   User,
 };

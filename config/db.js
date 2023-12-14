@@ -8,10 +8,10 @@ const options = {
   useUnifiedTopology: true,
   useFindAndModify: false,
 };
-var dbme = process.env.MONGODBURI;
+// var dbme = process.env.MONGODBURI;
 var db = process.env.MONGODB_URI;
 
 const conn = mongoose.createConnection(db, options);
-const connMe = mongoose.createConnection(dbme, options);
+// const connMe = mongoose.createConnection(dbme, options);
 
-module.exports = { conn, connMe };
+module.exports = { conn };

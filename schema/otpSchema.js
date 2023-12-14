@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-
-const { Schema, model } = mongoose;
+const { conn } = require("../config/db.js");
+const Schema = mongoose.Schema;
 
 const OTPSchema = new Schema({
   email: {
@@ -15,7 +15,6 @@ const OTPSchema = new Schema({
     type: Boolean,
     default: false,
   },
-
   createdAt: {
     type: Date,
     default: Date.now,
@@ -23,5 +22,8 @@ const OTPSchema = new Schema({
   },
 });
 
-const OTP = model("otp", OTPSchema);
-module.exports = OTP;
+const OTP = conn.model("otp", OTPSchema);
+
+module.exports = {
+  OTP,
+};

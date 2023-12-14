@@ -1,9 +1,10 @@
-const { User, UserMe } = require("../schema/userSchema");
+const { User } = require("../schema/userSchema");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const sendOTPEmail = require("../utils/send_mail");
-const OTP = require("../schema/otpSchema");
+const { OTP } = require("../schema/otpSchema");
+const generateUniqueUserName = require("../utils/username_generator");
 
 const generateOTP = () => {
   const digits = "0123456789";
@@ -16,12 +17,10 @@ const generateOTP = () => {
 
 class AccountController {
   static signup = async (req, res) => {
-    const { username, password, name, mobile, email, deviceNotificationId } =
-      req.body;
+    const { password, name, mobile, email, deviceNotificationId } = req.body;
     var emailOrMobile = null;
 
     if (
-      req.body["username"] &&
       req.body["password"] &&
       req.body["name"] &&
       req.body["deviceNotificationId"] &&
@@ -48,6 +47,7 @@ class AccountController {
         }
       }
       try {
+        const username = generateUniqueUserName(name);
         const user = await User.findOne({ username: username });
         if (user) {
           return res.status(400).json({ message: "Username already exists" });
@@ -72,19 +72,11 @@ class AccountController {
           deviceNotificationId: deviceNotificationId,
         });
 
-        const newUserMe = new UserMe({
-          username: username,
-          password: hashedPassword,
-          name: name,
-          deviceNotificationId: deviceNotificationId,
-        });
         if (email) {
           newUser.email = email;
-          newUserMe.email = email;
         }
         if (mobile) {
           newUser.mobile = mobile;
-          newUserMe.mobile = mobile;
         }
         newUser.save((err, user) => {
           if (err) {
@@ -99,7 +91,6 @@ class AccountController {
             });
           }
         });
-        newUserMe.save();
       } catch (err) {
         return res.status(400).json({
           status: "failed",
@@ -129,7 +120,7 @@ class AccountController {
           if (isvalidPassword) {
             const id = user._id;
             const token = jwt.sign({ _id: id }, process.env.JWT_SECRET_KEY, {
-              expiresIn: 604800,
+              expiresIn: "60d",
             });
             return res.status(200).json({
               status: "success",
@@ -196,7 +187,9 @@ class AccountController {
   static forgetPassword = async (req, res) => {
     const { email } = req.body;
 
-    const user = User.findOne({ email: email });
+    const user = await User.findOne({ email: email });
+
+    console.log("user", user);
 
     if (!user) {
       return res.status(400).json({
@@ -251,9 +244,14 @@ class AccountController {
 `;
 
     const isSent = await sendOTPEmail(email, mailData, false);
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY, {
+      expiresIn: "10m",
+    });
 
     if (isSent) {
+      console.log("otp", OTP);
       var otpData = await OTP.findOne({ email: email });
+      console.log("otpData", otpData);
 
       if (otpData) {
         await OTP.findOneAndUpdate(
@@ -269,6 +267,7 @@ class AccountController {
       }
       return res.status(200).json({
         status: "success",
+        token: token,
         message: "OTP sent successfully",
       });
     }
@@ -279,15 +278,17 @@ class AccountController {
   };
 
   static verifyOtp = async (req, res) => {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
+    const { otp } = req.body;
+    if (!otp) {
       return res.status(400).send({
         status: "failed",
         message: "Required fields missing",
       });
     }
     try {
-      const otpData = await OTP.findOne({ email: email });
+      const otpData = await OTP.findOne({ email: req.user.email });
+
+      console.log("otpData", otpData);
       if (!otpData) {
         return res.status(404).send({
           status: "failed",
@@ -303,22 +304,24 @@ class AccountController {
       otpData.verified = true;
       otpData.save();
       return res.status(200).send({
-        status: "ok",
+        status: "success",
         message: "OTP verified successfully",
       });
     } catch (e) {
+      console.log("catch error : ", e);
       return res.status(500).send({ status: "failed", message: e.message });
     }
   };
 
   static changePasswordOtp = async (req, res) => {
-    const { email, newPassword } = req.body;
-    if (!email || !newPassword) {
+    const { newPassword } = req.body;
+    if (!newPassword) {
       return res.status(400).send({
         status: "failed",
         message: "Required fields missing",
       });
     }
+    const email = req.user.email;
     try {
       const otpData = await OTP.findOne({ email });
       if (!otpData) {
@@ -344,7 +347,7 @@ class AccountController {
       }
       await OTP.findOneAndDelete({ email });
       return res.status(200).send({
-        status: "ok",
+        status: "success",
         message: "Password changed successfully",
       });
     } catch (e) {

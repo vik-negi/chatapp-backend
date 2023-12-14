@@ -1,5 +1,5 @@
-const { User, UserMe } = require("../schema/userSchema");
-const { Chat, ChatMe } = require("../schema/chatSchema");
+const { User } = require("../schema/userSchema");
+const { Chat } = require("../schema/chatSchema");
 
 const { Mongoose, ObjectId } = require("mongoose");
 
@@ -89,17 +89,7 @@ class ChatController {
           receiverUserId: receiverUserId,
           chat: [chat],
         });
-        await ChatMe.create({
-          senderUserId: senderUserId,
-          receiverUserId: receiverUserId,
-          chat: [chat],
-        });
         await Chat.create({
-          receiverUserId: senderUserId,
-          senderUserId: receiverUserId,
-          chat: [chat],
-        });
-        ChatMe.create({
           receiverUserId: senderUserId,
           senderUserId: receiverUserId,
           chat: [chat],
@@ -143,34 +133,8 @@ class ChatController {
           },
           { new: true }
         );
-        await UserMe.findOneAndUpdate(
-          { _id: receiverUserId },
-          {
-            $push: {
-              chatWith: {
-                user: senderUserId,
-                image: user.profileImage.url,
-                lastMessage: chat,
-              },
-            },
-          },
-          { new: true }
-        );
-        await User.findOneAndUpdate(
-          { _id: senderUserId },
-          {
-            $push: {
-              chatWith: {
-                user: receiverUserId,
-                image: recieverUser.profileImage.url,
-                lastMessage: chat,
-              },
-            },
-          },
-          { new: true }
-        );
 
-        await UserMe.findOneAndUpdate(
+        await User.findOneAndUpdate(
           { _id: senderUserId },
           {
             $push: {
@@ -204,19 +168,6 @@ class ChatController {
         },
         { new: true }
       );
-      await UserMe.findOneAndUpdate(
-        { _id: receiverUserId },
-        {
-          $push: {
-            chatWith: {
-              user: senderUserId,
-              image: user.profileImage.url,
-              lastMessage: chat,
-            },
-          },
-        },
-        { new: true }
-      );
       await User.findOneAndUpdate(
         { _id: senderUserId },
         {
@@ -231,20 +182,6 @@ class ChatController {
         { new: true }
       );
 
-      await UserMe.findOneAndUpdate(
-        { _id: senderUserId },
-        {
-          $push: {
-            chatWith: {
-              user: receiverUserId,
-              image: recieverUser.profileImage.url,
-              lastMessage: chat,
-            },
-          },
-        },
-        { new: true }
-      );
-
       await Chat.findOneAndUpdate(
         { senderUserId: senderUserId, receiverUserId: receiverUserId },
         {
@@ -255,25 +192,7 @@ class ChatController {
         { new: true }
       );
 
-      await ChatMe.findOneAndUpdate(
-        { senderUserId: senderUserId, receiverUserId: receiverUserId },
-        {
-          $push: {
-            chat: chat,
-          },
-        },
-        { new: true }
-      );
       await Chat.findOneAndUpdate(
-        { senderUserId: receiverUserId, receiverUserId: senderUserId },
-        {
-          $push: {
-            chat: chat,
-          },
-        },
-        { new: true }
-      );
-      await ChatMe.findOneAndUpdate(
         { senderUserId: receiverUserId, receiverUserId: senderUserId },
         {
           $push: {

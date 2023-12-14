@@ -34,12 +34,11 @@ async function sendOTPEmail(email, userData, isOtp) {
     });
 
     console.log("OTP email sent successfully");
-    // console.log(response);
     return true;
 
     // Handle response or perform any necessary actions after successful email sending
   } catch (error) {
-    console.error("Error sending OTP email:", error.response.data);
+    console.error("Error sending OTP email:", error);
     return false;
     // Handle error or perform any necessary actions if email sending fails
   }
